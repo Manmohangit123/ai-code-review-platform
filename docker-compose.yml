@@ -33,6 +33,16 @@ services:
     networks:
       - backend
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cr_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
@@ -40,3 +50,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  ollama_data:
