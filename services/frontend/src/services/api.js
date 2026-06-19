@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const AUTH_URL = 'http://localhost:3001';
 const GITHUB_URL = 'http://localhost:3002';
+const AI_URL = 'http://localhost:8000';
 
 const getToken = () => localStorage.getItem('accessToken');
 
@@ -29,8 +30,12 @@ export const getFileContent = (owner, repo, path) =>
 export const getPullRequests = (owner, repo) =>
     axios.get(`${GITHUB_URL}/github/repos/${owner}/${repo}/pulls`, authHeaders());
 
-// AI Service
-const AI_URL = 'http://localhost:8000';
-
+// AI
 export const analyzeCode = (file_path, code, language) =>
     axios.post(`${AI_URL}/ai/review`, { file_path, code, language }, { timeout: 120000 });
+
+export const scanSecurity = (file_path, code, language) =>
+    axios.post(`${AI_URL}/ai/security`, { file_path, code, language }, { timeout: 120000 });
+
+export const scanPerformance = (file_path, code, language) =>
+    axios.post(`${AI_URL}/ai/performance`, { file_path, code, language }, { timeout: 120000 });

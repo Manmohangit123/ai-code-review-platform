@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getFileContent, analyzeCode } from '../services/api'
+import { getFileContent, analyzeCode, scanSecurity, scanPerformance } from '../services/api'
 
 const getLanguage = (path) => {
-    const ext = path.split('.').pop()
+    const ext = path?.split('.').pop()
     const map = { js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', py: 'python', css: 'css', html: 'html', json: 'json', sql: 'sql', md: 'markdown' }
     return map[ext] || 'unknown'
 }
+
+const SEVERITY_COLORS = { critical: '#f85149', high: '#ff7b72', medium: '#e3b341', low: '#58a6ff', info: '#8b949e', none: '#3fb950' }
+const CATEGORY_COLORS = { bug: '#f85149', security: '#ff7b72', performance: '#e3b341', style: '#58a6ff', complexity: '#a371f7', memory: '#e3b341', database: '#f85149', network: '#58a6ff', rendering: '#a371f7', bundle: '#8b949e' }
 
 export default function FileViewer() {
     const { owner, repo } = useParams()
@@ -15,9 +18,11 @@ export default function FileViewer() {
     const [file, setFile] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [analyzing, setAnalyzing] = useState(false)
-    const [report, setReport] = useState(null)
-    const [analyzeError, setAnalyzeError] = useState(null)
+    const [activeTab, setActiveTab] = useState(null)
+    const [scanning, setScanning] = useState(false)
+    const [reports, setReports] = useState({ review: null, security: null, performance: null })
+    const [scanError, setScanError] = useState(null)
+    const [severityFilter, setSeverityFilter] = useState('all')
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -28,27 +33,42 @@ export default function FileViewer() {
             .finally(() => setLoading(false))
     }, [owner, repo, filePath])
 
-    const handleAnalyze = async () => {
-        setAnalyzing(true)
-        setReport(null)
-        setAnalyzeError(null)
+    const runScan = async (type) => {
+        setScanning(true)
+        setActiveTab(type)
+        setScanError(null)
         try {
-            const res = await analyzeCode(filePath, file.content, getLanguage(filePath))
-            setReport(res.data)
-        } catch (err) {
-            setAnalyzeError('AI analysis failed. Make sure Ollama is running.')
+            let res
+            const lang = getLanguage(filePath)
+            if (type === 'review') res = await analyzeCode(filePath, file.content, lang)
+            else if (type === 'security') res = await scanSecurity(filePath, file.content, lang)
+            else if (type === 'performance') res = await scanPerformance(filePath, file.content, lang)
+            setReports(prev => ({ ...prev, [type]: res.data }))
+        } catch {
+            setScanError(`${type} scan failed. Make sure AI service is running.`)
         } finally {
-            setAnalyzing(false)
+            setScanning(false)
         }
     }
 
+    const getFindings = () => {
+        const r = reports[activeTab]
+        if (!r) return []
+        if (activeTab === 'review') return r.findings || []
+        if (activeTab === 'security') return r.vulnerabilities || []
+        if (activeTab === 'performance') return r.issues || []
+        return []
+    }
+
+    const filteredFindings = getFindings().filter(f =>
+        severityFilter === 'all' || f.severity === severityFilter
+    )
+
     if (loading) return <div style={styles.center}><p style={styles.loading}>Loading file...</p></div>
-    if (error) return <div style={styles.center}><p style={styles.error}>Error: {error}</p></div>
+    if (error) return <div style={styles.center}><p style={styles.errorText}>Error: {error}</p></div>
 
     const lines = file?.content?.split('\n') || []
-
-    const severityColor = { critical: '#f85149', high: '#ff7b72', medium: '#e3b341', low: '#58a6ff', info: '#8b949e' }
-    const categoryBadge = { bug: '#f85149', security: '#ff7b72', performance: '#e3b341', style: '#58a6ff', complexity: '#a371f7' }
+    const currentReport = reports[activeTab]
 
     return (
         <div style={styles.container}>
@@ -61,56 +81,110 @@ export default function FileViewer() {
                     <span style={styles.crumbSep}>/</span>
                     <span style={styles.crumbActive}>{filePath}</span>
                 </div>
-                <button
-                    style={{ ...styles.analyzeBtn, opacity: analyzing ? 0.7 : 1 }}
-                    onClick={handleAnalyze}
-                    disabled={analyzing}
-                >
-                    {analyzing ? '⏳ Analyzing...' : '🤖 Analyze with AI'}
-                </button>
+
+                {/* Scan buttons */}
+                <div style={styles.scanButtons}>
+                    <button style={{ ...styles.scanBtn, background: '#238636' }} onClick={() => runScan('review')} disabled={scanning}>
+                        🤖 Code Review
+                    </button>
+                    <button style={{ ...styles.scanBtn, background: '#da3633' }} onClick={() => runScan('security')} disabled={scanning}>
+                        🔒 Security Scan
+                    </button>
+                    <button style={{ ...styles.scanBtn, background: '#9a6700' }} onClick={() => runScan('performance')} disabled={scanning}>
+                        ⚡ Performance
+                    </button>
+                </div>
             </div>
 
-            {/* AI Report */}
-            {analyzing && (
-                <div style={styles.analyzingBox}>
-                    <p style={styles.analyzingText}>AI is reviewing your code... this takes 30-60 seconds.</p>
+            {/* Scanning indicator */}
+            {scanning && (
+                <div style={styles.scanningBox}>
+                    <p style={styles.scanningText}>⏳ AI is analyzing your code... please wait 30-60 seconds.</p>
                 </div>
             )}
 
-            {analyzeError && (
+            {scanError && (
                 <div style={styles.errorBox}>
-                    <p style={styles.errorText}>{analyzeError}</p>
+                    <p style={styles.errorText}>{scanError}</p>
                 </div>
             )}
 
-            {report && (
+            {/* Report */}
+            {currentReport && !scanning && (
                 <div style={styles.reportBox}>
+                    {/* Report header */}
                     <div style={styles.reportHeader}>
                         <div>
-                            <h3 style={styles.reportTitle}>AI Code Review Report</h3>
-                            <p style={styles.reportSummary}>{report.summary}</p>
+                            <h3 style={styles.reportTitle}>
+                                {activeTab === 'review' && '🤖 Code Review Report'}
+                                {activeTab === 'security' && '🔒 Security Scan Report'}
+                                {activeTab === 'performance' && '⚡ Performance Report'}
+                            </h3>
+                            <p style={styles.reportSummary}>{currentReport.summary}</p>
                         </div>
-                        <div style={styles.scoreCircle}>
-                            <span style={{ ...styles.scoreNumber, color: report.overall_score >= 70 ? '#3fb950' : report.overall_score >= 40 ? '#e3b341' : '#f85149' }}>
-                                {report.overall_score}
-                            </span>
-                            <span style={styles.scoreLabel}>/ 100</span>
-                        </div>
+
+                        {/* Score */}
+                        {activeTab === 'review' && (
+                            <div style={styles.scoreCircle}>
+                                <span style={{ ...styles.scoreNumber, color: currentReport.overall_score >= 70 ? '#3fb950' : currentReport.overall_score >= 40 ? '#e3b341' : '#f85149' }}>
+                                    {currentReport.overall_score}
+                                </span>
+                                <span style={styles.scoreLabel}>/ 100</span>
+                            </div>
+                        )}
+                        {activeTab === 'security' && (
+                            <div style={{ ...styles.scoreCircle, borderColor: SEVERITY_COLORS[currentReport.risk_level] || '#30363d' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '700', color: SEVERITY_COLORS[currentReport.risk_level] || '#8b949e', textAlign: 'center' }}>
+                                    {(currentReport.risk_level || 'none').toUpperCase()}
+                                </span>
+                                <span style={styles.scoreLabel}>risk</span>
+                            </div>
+                        )}
+                        {activeTab === 'performance' && (
+                            <div style={styles.scoreCircle}>
+                                <span style={{ ...styles.scoreNumber, color: currentReport.performance_score >= 70 ? '#3fb950' : currentReport.performance_score >= 40 ? '#e3b341' : '#f85149' }}>
+                                    {currentReport.performance_score}
+                                </span>
+                                <span style={styles.scoreLabel}>/ 100</span>
+                            </div>
+                        )}
                     </div>
 
-                    {report.findings.length === 0 ? (
-                        <p style={styles.noFindings}>✅ No issues found. Great code!</p>
+                    {/* Severity filter */}
+                    {getFindings().length > 0 && (
+                        <div style={styles.filterRow}>
+                            <span style={styles.filterLabel}>Filter by severity:</span>
+                            {['all', 'critical', 'high', 'medium', 'low', 'info'].map(s => (
+                                <button
+                                    key={s}
+                                    style={{
+                                        ...styles.filterBtn,
+                                        background: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') + '33' : 'transparent',
+                                        color: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') : '#8b949e',
+                                        borderColor: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') : '#30363d'
+                                    }}
+                                    onClick={() => setSeverityFilter(s)}
+                                >
+                                    {s.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Findings */}
+                    {getFindings().length === 0 ? (
+                        <p style={styles.noFindings}>✅ No issues found!</p>
                     ) : (
-                        <div style={styles.findings}>
-                            <p style={styles.findingsTitle}>{report.findings.length} issue(s) found</p>
-                            {report.findings.map((f, i) => (
+                        <div>
+                            <p style={styles.findingsCount}>{filteredFindings.length} of {getFindings().length} issue(s) shown</p>
+                            {filteredFindings.map((f, i) => (
                                 <div key={i} style={styles.findingCard}>
                                     <div style={styles.findingTop}>
-                                        <span style={{ ...styles.severityBadge, background: severityColor[f.severity] + '22', color: severityColor[f.severity], border: `1px solid ${severityColor[f.severity]}` }}>
-                                            {f.severity.toUpperCase()}
+                                        <span style={{ ...styles.badge, background: (SEVERITY_COLORS[f.severity] || '#8b949e') + '22', color: SEVERITY_COLORS[f.severity] || '#8b949e', border: `1px solid ${SEVERITY_COLORS[f.severity] || '#8b949e'}` }}>
+                                            {(f.severity || '').toUpperCase()}
                                         </span>
-                                        <span style={{ ...styles.categoryBadge, background: (categoryBadge[f.category] || '#8b949e') + '22', color: categoryBadge[f.category] || '#8b949e' }}>
-                                            {f.category}
+                                        <span style={{ ...styles.badge, background: '#21262d', color: CATEGORY_COLORS[f.category] || '#8b949e' }}>
+                                            {f.owasp_category || f.category}
                                         </span>
                                         {f.line_start && (
                                             <span style={styles.lineRef}>Line {f.line_start}{f.line_end && f.line_end !== f.line_start ? `-${f.line_end}` : ''}</span>
@@ -118,9 +192,15 @@ export default function FileViewer() {
                                     </div>
                                     <p style={styles.findingTitle}>{f.title}</p>
                                     <p style={styles.findingDesc}>{f.description}</p>
+                                    {f.impact && (
+                                        <div style={{ ...styles.suggestionBox, borderLeftColor: '#e3b341' }}>
+                                            <p style={{ ...styles.suggestionLabel, color: '#e3b341' }}>📊 Impact</p>
+                                            <p style={styles.suggestionText}>{f.impact}</p>
+                                        </div>
+                                    )}
                                     <div style={styles.suggestionBox}>
-                                        <p style={styles.suggestionLabel}>💡 Suggestion</p>
-                                        <p style={styles.suggestionText}>{f.suggestion}</p>
+                                        <p style={styles.suggestionLabel}>💡 {activeTab === 'security' ? 'Remediation' : 'Suggestion'}</p>
+                                        <p style={styles.suggestionText}>{f.remediation || f.suggestion}</p>
                                     </div>
                                 </div>
                             ))}
@@ -131,7 +211,7 @@ export default function FileViewer() {
 
             {/* File content */}
             <div style={styles.fileMeta}>
-                <span style={styles.metaText}>{lines.length} lines · {(file.size / 1024).toFixed(1)} KB</span>
+                <span style={styles.metaText}>{lines.length} lines · {(file.size / 1024).toFixed(1)} KB · {getLanguage(filePath)}</span>
             </div>
             <div style={styles.codeContainer}>
                 <table style={styles.table}>
@@ -151,34 +231,36 @@ export default function FileViewer() {
 
 const styles = {
     container: { padding: '32px', maxWidth: '1100px', margin: '0 auto' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' },
     breadcrumb: { display: 'flex', alignItems: 'center', gap: '8px' },
     crumbLink: { color: '#58a6ff', cursor: 'pointer', fontSize: '13px' },
     crumbSep: { color: '#6e7681', fontSize: '13px' },
     crumbActive: { color: '#e6edf3', fontSize: '13px' },
-    analyzeBtn: { background: '#1f6feb', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-    analyzingBox: { background: '#161b22', border: '1px solid #1f6feb', borderRadius: '8px', padding: '16px', marginBottom: '20px', textAlign: 'center' },
-    analyzingText: { color: '#58a6ff', margin: 0 },
+    scanButtons: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+    scanBtn: { color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    scanningBox: { background: '#161b22', border: '1px solid #1f6feb', borderRadius: '8px', padding: '16px', marginBottom: '20px', textAlign: 'center' },
+    scanningText: { color: '#58a6ff', margin: 0 },
     errorBox: { background: '#161b22', border: '1px solid #f85149', borderRadius: '8px', padding: '16px', marginBottom: '20px' },
     errorText: { color: '#f85149', margin: 0 },
     reportBox: { background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '24px', marginBottom: '24px' },
     reportHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
     reportTitle: { color: '#e6edf3', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' },
     reportSummary: { color: '#8b949e', fontSize: '13px', margin: 0, maxWidth: '700px' },
-    scoreCircle: { background: '#0d1117', border: '2px solid #30363d', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+    scoreCircle: { background: '#0d1117', border: '2px solid #30363d', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     scoreNumber: { fontSize: '24px', fontWeight: '700' },
     scoreLabel: { color: '#6e7681', fontSize: '11px' },
+    filterRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' },
+    filterLabel: { color: '#8b949e', fontSize: '12px' },
+    filterBtn: { border: '1px solid', borderRadius: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' },
     noFindings: { color: '#3fb950', fontSize: '14px', margin: 0 },
-    findings: {},
-    findingsTitle: { color: '#8b949e', fontSize: '13px', marginBottom: '12px' },
+    findingsCount: { color: '#8b949e', fontSize: '13px', marginBottom: '12px' },
     findingCard: { background: '#0d1117', border: '1px solid #30363d', borderRadius: '8px', padding: '16px', marginBottom: '12px' },
     findingTop: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' },
-    severityBadge: { fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
-    categoryBadge: { fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: '#21262d' },
+    badge: { fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
     lineRef: { color: '#6e7681', fontSize: '11px', marginLeft: 'auto' },
     findingTitle: { color: '#e6edf3', fontSize: '14px', fontWeight: '600', margin: '0 0 4px' },
     findingDesc: { color: '#8b949e', fontSize: '13px', margin: '0 0 12px', lineHeight: '1.5' },
-    suggestionBox: { background: '#161b22', borderLeft: '3px solid #3fb950', padding: '10px 14px', borderRadius: '4px' },
+    suggestionBox: { background: '#161b22', borderLeft: '3px solid #3fb950', padding: '10px 14px', borderRadius: '4px', marginBottom: '8px' },
     suggestionLabel: { color: '#3fb950', fontSize: '11px', fontWeight: '700', margin: '0 0 4px' },
     suggestionText: { color: '#8b949e', fontSize: '13px', margin: 0, lineHeight: '1.5' },
     fileMeta: { marginBottom: '8px' },
@@ -190,6 +272,5 @@ const styles = {
     lineCode: { padding: '2px 16px 2px 8px' },
     pre: { margin: 0, color: '#e6edf3', fontSize: '13px', fontFamily: '"Fira Code", "Cascadia Code", monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
     center: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' },
-    loading: { color: '#58a6ff', fontSize: '16px' },
-    error: { color: '#f85149', fontSize: '16px' }
+    loading: { color: '#58a6ff', fontSize: '16px' }
 }

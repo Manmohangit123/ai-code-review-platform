@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.routers import review
+from src.routers import review, security, performance
 
 app = FastAPI(title="AI Code Review Service", version="1.0.0")
 
@@ -16,6 +16,8 @@ app.add_middleware(
 )
 
 app.include_router(review.router, prefix="/ai/review", tags=["review"])
+app.include_router(security.router, prefix="/ai/security", tags=["security"])
+app.include_router(performance.router, prefix="/ai/performance", tags=["performance"])
 
 @app.get("/health")
 def health():
