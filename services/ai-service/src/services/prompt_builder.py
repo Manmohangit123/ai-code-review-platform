@@ -75,6 +75,31 @@ If no vulnerabilities found, return empty array and risk_level "none".
 Return ONLY the JSON, no markdown, no explanation."""
 
 
+README_GENERATOR_PROMPT = """You are a technical writer generating a professional README.md for a software project.
+
+Project name: {project_name}
+File structure:
+{file_tree}
+
+Sample code files:
+{code_samples}
+
+Generate a complete, professional README.md in markdown format including:
+1. Project title and description
+2. Features list
+3. Tech stack / Built With
+4. Prerequisites
+5. Installation steps
+6. Usage instructions
+7. API documentation (if applicable)
+8. Project structure
+9. Contributing guidelines
+10. License
+
+Make it detailed, professional, and useful. Use proper markdown formatting with headers, code blocks, and lists.
+Return ONLY the markdown content, no extra explanation."""
+
+
 PERFORMANCE_SCAN_PROMPT = """You are a performance engineer analyzing code for performance issues.
 
 Analyze the following {language} code from file "{file_path}" for performance problems.

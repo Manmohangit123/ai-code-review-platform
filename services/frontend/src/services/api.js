@@ -39,3 +39,6 @@ export const scanSecurity = (file_path, code, language) =>
 
 export const scanPerformance = (file_path, code, language) =>
     axios.post(`${AI_URL}/ai/performance`, { file_path, code, language }, { timeout: 180000 });
+
+export const generateReadme = (project_name, file_tree, code_samples) =>
+    axios.post(`${AI_URL}/ai/docs/readme`, { project_name, file_tree, code_samples }, { timeout: 180000 });

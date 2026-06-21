@@ -49,6 +49,12 @@ export default function RepoDetail() {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                 />
+                <button
+                    style={styles.readmeBtn}
+                    onClick={() => navigate(`/repos/${owner}/${repo}/readme`)}
+                >
+                    📝 Generate README
+                </button>
             </div>
 
             <div style={styles.fileList}>
@@ -79,8 +85,9 @@ const styles = {
     crumbActive: { color: '#e6edf3', fontSize: '13px' },
     title: { color: '#e6edf3', fontSize: '24px', fontWeight: '700', margin: '0 0 4px' },
     subtitle: { color: '#8b949e', fontSize: '13px', margin: 0 },
-    toolbar: { marginBottom: '16px' },
+    toolbar: { marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' },
     search: { background: '#0d1117', border: '1px solid #30363d', borderRadius: '6px', color: '#e6edf3', padding: '8px 14px', fontSize: '14px', width: '300px', outline: 'none' },
+    readmeBtn: { background: '#238636', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     fileList: { background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', overflow: 'hidden' },
     fileRow: { display: 'flex', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #21262d', cursor: 'pointer', transition: 'background 0.15s' },
     fileIcon: { marginRight: '10px', fontSize: '14px' },

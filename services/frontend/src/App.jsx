@@ -5,6 +5,7 @@ import AuthSuccess from './pages/AuthSuccess'
 import Repositories from './pages/Repositories'
 import RepoDetail from './pages/RepoDetail'
 import FileViewer from './pages/FileViewer'
+import ReadmeGenerator from './pages/ReadmeGenerator'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -28,6 +29,7 @@ function AppRoutes() {
                 <Route path="/repos" element={<Repositories />} />
                 <Route path="/repos/:owner/:repo" element={<RepoDetail />} />
                 <Route path="/repos/:owner/:repo/file" element={<FileViewer />} />
+                <Route path="/repos/:owner/:repo/readme" element={<ReadmeGenerator />} />
             </Route>
         </Routes>
     )

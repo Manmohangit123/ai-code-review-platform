@@ -6,7 +6,7 @@ import re
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 
-async def analyze_with_ollama(prompt: str) -> dict:
+async def call_ollama(prompt: str) -> str:
     async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
@@ -14,20 +14,25 @@ async def analyze_with_ollama(prompt: str) -> dict:
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False,
-                "options": {
-                    "temperature": 0.1
-                }
+                "options": {"temperature": 0.1}
             }
         )
         response.raise_for_status()
-        raw = response.json()["response"]
+        return response.json()["response"].strip()
 
-        # Extract JSON from the response
-        raw = raw.strip()
+async def analyze_with_ollama(prompt: str) -> dict:
+    raw = await call_ollama(prompt)
 
-        # Try to find JSON block if model wrapped it in markdown
-        json_match = re.search(r'\{[\s\S]*\}', raw)
-        if json_match:
-            raw = json_match.group(0)
+    # Try to extract JSON
+    json_match = re.search(r'\{[\s\S]*\}', raw)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            pass
 
-        return json.loads(raw)
+    # Return raw string if not JSON
+    return raw
+
+async def generate_text_with_ollama(prompt: str) -> str:
+    return await call_ollama(prompt)
