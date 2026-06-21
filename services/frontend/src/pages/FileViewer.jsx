@@ -9,8 +9,8 @@ const getLanguage = (path) => {
     return map[ext] || 'unknown'
 }
 
-const SEVERITY_COLORS = { critical: '#f85149', high: '#ff7b72', medium: '#e3b341', low: '#58a6ff', info: '#8b949e', none: '#3fb950' }
-const CATEGORY_COLORS = { bug: '#f85149', security: '#ff7b72', performance: '#e3b341', style: '#58a6ff', complexity: '#a371f7', memory: '#e3b341', database: '#f85149', network: '#58a6ff', rendering: '#a371f7', bundle: '#8b949e' }
+const SEV = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#3b82f6', info: '#6b7280', none: '#22c55e' }
+const CAT = { bug: '#ef4444', security: '#f97316', performance: '#f59e0b', style: '#3b82f6', complexity: '#8b5cf6', memory: '#f59e0b', database: '#ef4444', network: '#3b82f6', rendering: '#8b5cf6', bundle: '#6b7280' }
 
 export default function FileViewer() {
     const { owner, repo } = useParams()
@@ -24,6 +24,7 @@ export default function FileViewer() {
     const [reports, setReports] = useState({ review: null, security: null, performance: null })
     const [scanError, setScanError] = useState(null)
     const [severityFilter, setSeverityFilter] = useState('all')
+    const [expandedFindings, setExpandedFindings] = useState({})
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -38,6 +39,8 @@ export default function FileViewer() {
         setScanning(true)
         setActiveTab(type)
         setScanError(null)
+        setSeverityFilter('all')
+        setExpandedFindings({})
         try {
             let res
             const lang = getLanguage(filePath)
@@ -64,217 +67,291 @@ export default function FileViewer() {
         return []
     }
 
-    const filteredFindings = getFindings().filter(f =>
-        severityFilter === 'all' || f.severity === severityFilter
-    )
+    const filteredFindings = getFindings().filter(f => severityFilter === 'all' || f.severity === severityFilter)
+    const toggleFinding = (i) => setExpandedFindings(prev => ({ ...prev, [i]: !prev[i] }))
 
-    if (loading) return <div style={styles.center}><p style={styles.loading}>Loading file...</p></div>
-    if (error) return <div style={styles.center}><p style={styles.errorText}>Error: {error}</p></div>
+    const getScore = () => {
+        const r = reports[activeTab]
+        if (!r) return null
+        return r.overall_score ?? r.performance_score ?? null
+    }
+
+    const scoreColor = (score) => score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444'
+
+    if (loading) return (
+        <div style={s.center}>
+            <div style={s.spinner} />
+            <p style={s.loadingText}>Loading file...</p>
+        </div>
+    )
+    if (error) return <div style={s.center}><p style={s.errorText}>Error: {error}</p></div>
 
     const lines = file?.content?.split('\n') || []
     const currentReport = reports[activeTab]
+    const score = getScore()
 
     return (
-        <div style={styles.container}>
+        <div style={s.page}>
             {/* Header */}
-            <div style={styles.header}>
-                <div style={styles.breadcrumb}>
-                    <span style={styles.crumbLink} onClick={() => navigate('/repos')}>Repositories</span>
-                    <span style={styles.crumbSep}>/</span>
-                    <span style={styles.crumbLink} onClick={() => navigate(`/repos/${owner}/${repo}`)}>{repo}</span>
-                    <span style={styles.crumbSep}>/</span>
-                    <span style={styles.crumbActive}>{filePath}</span>
-                </div>
-
-                {/* Scan buttons */}
-                <div style={styles.scanButtons}>
-                    <button style={{ ...styles.scanBtn, background: '#238636' }} onClick={() => runScan('review')} disabled={scanning}>
-                        🤖 Code Review
-                    </button>
-                    <button style={{ ...styles.scanBtn, background: '#da3633' }} onClick={() => runScan('security')} disabled={scanning}>
-                        🔒 Security Scan
-                    </button>
-                    <button style={{ ...styles.scanBtn, background: '#9a6700' }} onClick={() => runScan('performance')} disabled={scanning}>
-                        ⚡ Performance
-                    </button>
-                </div>
-            </div>
-
-            {/* Scanning indicator */}
-            {scanning && (
-                <div style={styles.scanningBox}>
-                    <p style={styles.scanningText}>⏳ AI is analyzing your code...</p>
-                </div>
-            )}
-
-            {scanError && (
-                <div style={styles.errorBox}>
-                    <p style={styles.errorText}>{scanError}</p>
-                </div>
-            )}
-
-            {/* Report */}
-            {currentReport && !scanning && (
-                <div style={styles.reportBox}>
-                    {/* Report header */}
-                    <div style={styles.reportHeader}>
-                        <div>
-                            <h3 style={styles.reportTitle}>
-                                {activeTab === 'review' && '🤖 Code Review Report'}
-                                {activeTab === 'security' && '🔒 Security Scan Report'}
-                                {activeTab === 'performance' && '⚡ Performance Report'}
-                            </h3>
-                            <p style={styles.reportSummary}>{currentReport.summary}</p>
-                        </div>
-
-                        {/* Score */}
-                        {activeTab === 'review' && (
-                            <div style={styles.scoreCircle}>
-                                <span style={{ ...styles.scoreNumber, color: currentReport.overall_score >= 70 ? '#3fb950' : currentReport.overall_score >= 40 ? '#e3b341' : '#f85149' }}>
-                                    {currentReport.overall_score}
-                                </span>
-                                <span style={styles.scoreLabel}>/ 100</span>
-                            </div>
-                        )}
-                        {activeTab === 'security' && (
-                            <div style={{ ...styles.scoreCircle, borderColor: SEVERITY_COLORS[currentReport.risk_level] || '#30363d' }}>
-                                <span style={{ fontSize: '12px', fontWeight: '700', color: SEVERITY_COLORS[currentReport.risk_level] || '#8b949e', textAlign: 'center' }}>
-                                    {(currentReport.risk_level || 'none').toUpperCase()}
-                                </span>
-                                <span style={styles.scoreLabel}>risk</span>
-                            </div>
-                        )}
-                        {activeTab === 'performance' && (
-                            <div style={styles.scoreCircle}>
-                                <span style={{ ...styles.scoreNumber, color: currentReport.performance_score >= 70 ? '#3fb950' : currentReport.performance_score >= 40 ? '#e3b341' : '#f85149' }}>
-                                    {currentReport.performance_score}
-                                </span>
-                                <span style={styles.scoreLabel}>/ 100</span>
-                            </div>
-                        )}
+            <div style={s.header}>
+                <div>
+                    <div style={s.breadcrumb}>
+                        <span style={s.crumbLink} onClick={() => navigate('/repos')}>Repositories</span>
+                        <span style={s.crumbSep}>/</span>
+                        <span style={s.crumbLink} onClick={() => navigate(`/repos/${owner}/${repo}`)}>{repo}</span>
+                        <span style={s.crumbSep}>/</span>
+                        <span style={s.crumbActive}>{filePath?.split('/').pop()}</span>
                     </div>
+                    <div style={s.fileMeta}>
+                        <span style={s.metaBadge}>{getLanguage(filePath)}</span>
+                        <span style={s.metaText}>{lines.length} lines</span>
+                        <span style={s.metaDot}>·</span>
+                        <span style={s.metaText}>{(file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                </div>
 
-                    {/* Severity filter */}
-                    {getFindings().length > 0 && (
-                        <div style={styles.filterRow}>
-                            <span style={styles.filterLabel}>Filter by severity:</span>
-                            {['all', 'critical', 'high', 'medium', 'low', 'info'].map(s => (
-                                <button
-                                    key={s}
-                                    style={{
-                                        ...styles.filterBtn,
-                                        background: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') + '33' : 'transparent',
-                                        color: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') : '#8b949e',
-                                        borderColor: severityFilter === s ? (SEVERITY_COLORS[s] || '#58a6ff') : '#30363d'
-                                    }}
-                                    onClick={() => setSeverityFilter(s)}
-                                >
-                                    {s.toUpperCase()}
-                                </button>
-                            ))}
+                <div style={s.scanButtons}>
+                    {[
+                        { type: 'review', label: '🤖 Code Review', color: '#6366f1' },
+                        { type: 'security', label: '🛡️ Security', color: '#ef4444' },
+                        { type: 'performance', label: '⚡ Performance', color: '#f59e0b' },
+                    ].map(btn => (
+                        <button
+                            key={btn.type}
+                            style={{
+                                ...s.scanBtn,
+                                background: activeTab === btn.type ? btn.color : 'var(--bg-elevated)',
+                                border: `1px solid ${activeTab === btn.type ? btn.color : 'var(--border-default)'}`,
+                                color: activeTab === btn.type ? 'white' : 'var(--text-secondary)',
+                                opacity: scanning ? 0.6 : 1,
+                            }}
+                            onClick={() => runScan(btn.type)}
+                            disabled={scanning}
+                        >
+                            {scanning && activeTab === btn.type ? '⏳ Scanning...' : btn.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div style={s.layout}>
+                {/* Code Panel */}
+                <div style={s.codePanel}>
+                    <div style={s.codePanelHeader}>
+                        <span style={s.fileName}>📄 {filePath?.split('/').pop()}</span>
+                    </div>
+                    <div style={s.codeContainer}>
+                        <table style={s.table}>
+                            <tbody>
+                                {lines.map((line, i) => (
+                                    <tr key={i} style={s.row}>
+                                        <td style={s.lineNum}>{i + 1}</td>
+                                        <td style={s.lineCode}><pre style={s.pre}>{line || ' '}</pre></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Report Panel */}
+                <div style={s.reportPanel}>
+                    {!currentReport && !scanning && !scanError && (
+                        <div style={s.emptyReport}>
+                            <div style={s.emptyReportIcon}>🤖</div>
+                            <div style={s.emptyReportTitle}>AI Analysis</div>
+                            <div style={s.emptyReportDesc}>Select a scan type above to analyze this file with AI</div>
+                            <div style={s.scanHints}>
+                                <div style={s.scanHint}><span style={{ color: '#6366f1' }}>🤖</span> Code Review — bugs & quality</div>
+                                <div style={s.scanHint}><span style={{ color: '#ef4444' }}>🛡️</span> Security — vulnerabilities</div>
+                                <div style={s.scanHint}><span style={{ color: '#f59e0b' }}>⚡</span> Performance — bottlenecks</div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Findings */}
-                    {getFindings().length === 0 ? (
-                        <p style={styles.noFindings}>✅ No issues found!</p>
-                    ) : (
+                    {scanning && (
+                        <div style={s.scanningBox}>
+                            <div style={s.scanningSpinner} />
+                            <div style={s.scanningTitle}>AI is analyzing...</div>
+                            <div style={s.scanningDesc}>Running {activeTab} scan on {filePath?.split('/').pop()}</div>
+                        </div>
+                    )}
+
+                    {scanError && (
+                        <div style={s.errorBox}>
+                            <div style={s.errorIcon}>❌</div>
+                            <div style={s.errorMsg}>{scanError}</div>
+                        </div>
+                    )}
+
+                    {currentReport && !scanning && (
                         <div>
-                            <p style={styles.findingsCount}>{filteredFindings.length} of {getFindings().length} issue(s) shown</p>
-                            {filteredFindings.map((f, i) => (
-                                <div key={i} style={styles.findingCard}>
-                                    <div style={styles.findingTop}>
-                                        <span style={{ ...styles.badge, background: (SEVERITY_COLORS[f.severity] || '#8b949e') + '22', color: SEVERITY_COLORS[f.severity] || '#8b949e', border: `1px solid ${SEVERITY_COLORS[f.severity] || '#8b949e'}` }}>
-                                            {(f.severity || '').toUpperCase()}
-                                        </span>
-                                        <span style={{ ...styles.badge, background: '#21262d', color: CATEGORY_COLORS[f.category] || '#8b949e' }}>
-                                            {f.owasp_category || f.category}
-                                        </span>
-                                        {f.line_start && (
-                                            <span style={styles.lineRef}>Line {f.line_start}{f.line_end && f.line_end !== f.line_start ? `-${f.line_end}` : ''}</span>
-                                        )}
+                            {/* Report Header */}
+                            <div style={s.reportHeader}>
+                                <div style={s.reportHeaderLeft}>
+                                    <div style={s.reportTitle}>
+                                        {activeTab === 'review' && '🤖 Code Review'}
+                                        {activeTab === 'security' && '🛡️ Security Scan'}
+                                        {activeTab === 'performance' && '⚡ Performance'}
                                     </div>
-                                    <p style={styles.findingTitle}>{f.title}</p>
-                                    <p style={styles.findingDesc}>{f.description}</p>
-                                    {f.impact && (
-                                        <div style={{ ...styles.suggestionBox, borderLeftColor: '#e3b341' }}>
-                                            <p style={{ ...styles.suggestionLabel, color: '#e3b341' }}>📊 Impact</p>
-                                            <p style={styles.suggestionText}>{f.impact}</p>
-                                        </div>
-                                    )}
-                                    <div style={styles.suggestionBox}>
-                                        <p style={styles.suggestionLabel}>💡 {activeTab === 'security' ? 'Remediation' : 'Suggestion'}</p>
-                                        <p style={styles.suggestionText}>{f.remediation || f.suggestion}</p>
-                                    </div>
+                                    <div style={s.reportSummary}>{currentReport.summary}</div>
                                 </div>
-                            ))}
+                                {score != null ? (
+                                    <div style={{ ...s.scoreCircle, borderColor: scoreColor(score) }}>
+                                        <span style={{ ...s.scoreNum, color: scoreColor(score) }}>{score}</span>
+                                        <span style={s.scoreLabel}>/100</span>
+                                    </div>
+                                ) : currentReport.risk_level ? (
+                                    <div style={{ ...s.scoreCircle, borderColor: SEV[currentReport.risk_level] || 'var(--border-default)' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: '800', color: SEV[currentReport.risk_level], textAlign: 'center', textTransform: 'uppercase' }}>
+                                            {currentReport.risk_level}
+                                        </span>
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            {/* Severity Filter */}
+                            {getFindings().length > 0 && (
+                                <div style={s.filterRow}>
+                                    {['all', 'critical', 'high', 'medium', 'low', 'info'].map(sv => (
+                                        <button key={sv} style={{
+                                            ...s.filterBtn,
+                                            background: severityFilter === sv ? (SEV[sv] ? SEV[sv] + '22' : 'var(--primary-subtle)') : 'transparent',
+                                            color: severityFilter === sv ? (SEV[sv] || 'var(--primary)') : 'var(--text-muted)',
+                                            borderColor: severityFilter === sv ? (SEV[sv] || 'var(--primary)') : 'var(--border-subtle)',
+                                        }} onClick={() => setSeverityFilter(sv)}>
+                                            {sv.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Findings */}
+                            {getFindings().length === 0 ? (
+                                <div style={s.noIssues}>
+                                    <div style={s.noIssuesIcon}>✅</div>
+                                    <div style={s.noIssuesText}>No issues found!</div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div style={s.findingsCount}>{filteredFindings.length} of {getFindings().length} issues</div>
+                                    {filteredFindings.map((f, i) => (
+                                        <div key={i} style={s.findingCard} onClick={() => toggleFinding(i)}>
+                                            <div style={s.findingTop}>
+                                                <div style={{ ...s.sevBadge, background: (SEV[f.severity] || '#6b7280') + '20', color: SEV[f.severity] || '#6b7280', borderColor: (SEV[f.severity] || '#6b7280') + '50' }}>
+                                                    {(f.severity || 'info').toUpperCase()}
+                                                </div>
+                                                <div style={{ ...s.catBadge, color: CAT[f.category] || 'var(--text-muted)' }}>
+                                                    {f.owasp_category || f.category}
+                                                </div>
+                                                {f.line_start && <div style={s.lineRef}>L{f.line_start}{f.line_end !== f.line_start ? `-${f.line_end}` : ''}</div>}
+                                                <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '12px' }}>{expandedFindings[i] ? '▲' : '▼'}</span>
+                                            </div>
+                                            <div style={s.findingTitle}>{f.title}</div>
+
+                                            {expandedFindings[i] && (
+                                                <div style={s.findingBody}>
+                                                    <div style={s.findingDesc}>{f.description}</div>
+                                                    {f.impact && (
+                                                        <div style={{ ...s.suggestion, borderColor: '#f59e0b' }}>
+                                                            <div style={{ ...s.suggestionLabel, color: '#f59e0b' }}>📊 Impact</div>
+                                                            <div style={s.suggestionText}>{f.impact}</div>
+                                                        </div>
+                                                    )}
+                                                    <div style={s.suggestion}>
+                                                        <div style={s.suggestionLabel}>💡 {activeTab === 'security' ? 'Remediation' : 'Suggestion'}</div>
+                                                        <div style={s.suggestionText}>{f.remediation || f.suggestion}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
-            )}
-
-            {/* File content */}
-            <div style={styles.fileMeta}>
-                <span style={styles.metaText}>{lines.length} lines · {(file.size / 1024).toFixed(1)} KB · {getLanguage(filePath)}</span>
-            </div>
-            <div style={styles.codeContainer}>
-                <table style={styles.table}>
-                    <tbody>
-                        {lines.map((line, i) => (
-                            <tr key={i} style={styles.row}>
-                                <td style={styles.lineNum}>{i + 1}</td>
-                                <td style={styles.lineCode}><pre style={styles.pre}>{line}</pre></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
             </div>
         </div>
     )
 }
 
-const styles = {
-    container: { padding: '32px', maxWidth: '1100px', margin: '0 auto' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' },
-    breadcrumb: { display: 'flex', alignItems: 'center', gap: '8px' },
-    crumbLink: { color: '#58a6ff', cursor: 'pointer', fontSize: '13px' },
-    crumbSep: { color: '#6e7681', fontSize: '13px' },
-    crumbActive: { color: '#e6edf3', fontSize: '13px' },
+const s = {
+    page: { padding: '28px 32px', maxWidth: '1400px', margin: '0 auto' },
+
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' },
+    breadcrumb: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' },
+    crumbLink: { color: 'var(--primary)', cursor: 'pointer', fontSize: '13px' },
+    crumbSep: { color: 'var(--text-muted)', fontSize: '13px' },
+    crumbActive: { color: 'var(--text-primary)', fontSize: '13px', fontWeight: '500' },
+    fileMeta: { display: 'flex', alignItems: 'center', gap: '8px' },
+    metaBadge: { background: 'var(--primary-subtle)', color: 'var(--text-accent)', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    metaText: { color: 'var(--text-muted)', fontSize: '12px' },
+    metaDot: { color: 'var(--text-muted)', fontSize: '12px' },
+
     scanButtons: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-    scanBtn: { color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    scanningBox: { background: '#161b22', border: '1px solid #1f6feb', borderRadius: '8px', padding: '16px', marginBottom: '20px', textAlign: 'center' },
-    scanningText: { color: '#58a6ff', margin: 0 },
-    errorBox: { background: '#161b22', border: '1px solid #f85149', borderRadius: '8px', padding: '16px', marginBottom: '20px' },
-    errorText: { color: '#f85149', margin: 0 },
-    reportBox: { background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '24px', marginBottom: '24px' },
-    reportHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
-    reportTitle: { color: '#e6edf3', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' },
-    reportSummary: { color: '#8b949e', fontSize: '13px', margin: 0, maxWidth: '700px' },
-    scoreCircle: { background: '#0d1117', border: '2px solid #30363d', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    scoreNumber: { fontSize: '24px', fontWeight: '700' },
-    scoreLabel: { color: '#6e7681', fontSize: '11px' },
-    filterRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' },
-    filterLabel: { color: '#8b949e', fontSize: '12px' },
-    filterBtn: { border: '1px solid', borderRadius: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' },
-    noFindings: { color: '#3fb950', fontSize: '14px', margin: 0 },
-    findingsCount: { color: '#8b949e', fontSize: '13px', marginBottom: '12px' },
-    findingCard: { background: '#0d1117', border: '1px solid #30363d', borderRadius: '8px', padding: '16px', marginBottom: '12px' },
-    findingTop: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' },
-    badge: { fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
-    lineRef: { color: '#6e7681', fontSize: '11px', marginLeft: 'auto' },
-    findingTitle: { color: '#e6edf3', fontSize: '14px', fontWeight: '600', margin: '0 0 4px' },
-    findingDesc: { color: '#8b949e', fontSize: '13px', margin: '0 0 12px', lineHeight: '1.5' },
-    suggestionBox: { background: '#161b22', borderLeft: '3px solid #3fb950', padding: '10px 14px', borderRadius: '4px', marginBottom: '8px' },
-    suggestionLabel: { color: '#3fb950', fontSize: '11px', fontWeight: '700', margin: '0 0 4px' },
-    suggestionText: { color: '#8b949e', fontSize: '13px', margin: 0, lineHeight: '1.5' },
-    fileMeta: { marginBottom: '8px' },
-    metaText: { color: '#6e7681', fontSize: '12px' },
-    codeContainer: { background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', overflow: 'auto' },
+    scanBtn: { borderRadius: 'var(--radius-md)', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'var(--transition)' },
+
+    layout: { display: 'grid', gridTemplateColumns: '1fr 420px', gap: '20px', alignItems: 'start' },
+
+    codePanel: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' },
+    codePanelHeader: { padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', gap: '8px' },
+    fileName: { color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '500' },
+    codeContainer: { overflow: 'auto', maxHeight: '75vh' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    row: { borderBottom: '1px solid #21262d10' },
-    lineNum: { color: '#6e7681', fontSize: '12px', padding: '2px 16px', textAlign: 'right', userSelect: 'none', width: '48px', verticalAlign: 'top' },
-    lineCode: { padding: '2px 16px 2px 8px' },
-    pre: { margin: 0, color: '#e6edf3', fontSize: '13px', fontFamily: '"Fira Code", "Cascadia Code", monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
-    center: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' },
-    loading: { color: '#58a6ff', fontSize: '16px' }
+    row: { borderBottom: '1px solid rgba(255,255,255,0.02)' },
+    lineNum: { color: 'var(--text-muted)', fontSize: '12px', padding: '1px 12px 1px 16px', textAlign: 'right', userSelect: 'none', width: '44px', verticalAlign: 'top', fontFamily: '"JetBrains Mono", monospace' },
+    lineCode: { padding: '1px 16px 1px 8px' },
+    pre: { margin: 0, color: 'var(--text-primary)', fontSize: '13px', fontFamily: '"JetBrains Mono", "Fira Code", monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: '1.6' },
+
+    reportPanel: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '20px', position: 'sticky', top: '20px', maxHeight: '85vh', overflowY: 'auto' },
+
+    emptyReport: { textAlign: 'center', padding: '40px 16px' },
+    emptyReportIcon: { fontSize: '40px', marginBottom: '12px' },
+    emptyReportTitle: { fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' },
+    emptyReportDesc: { fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' },
+    scanHints: { display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
+    scanHint: { fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)' },
+
+    scanningBox: { textAlign: 'center', padding: '40px 16px' },
+    scanningSpinner: { width: '36px', height: '36px', border: '3px solid var(--border-default)', borderTop: '3px solid var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' },
+    scanningTitle: { fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '6px' },
+    scanningDesc: { fontSize: '12px', color: 'var(--text-muted)' },
+
+    errorBox: { textAlign: 'center', padding: '32px 16px' },
+    errorIcon: { fontSize: '32px', marginBottom: '12px' },
+    errorMsg: { fontSize: '13px', color: 'var(--danger)' },
+
+    reportHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)' },
+    reportHeaderLeft: { flex: 1 },
+    reportTitle: { fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' },
+    reportSummary: { fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' },
+    scoreCircle: { width: '60px', height: '60px', borderRadius: '50%', border: '2px solid', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    scoreNum: { fontSize: '20px', fontWeight: '800', lineHeight: 1 },
+    scoreLabel: { fontSize: '10px', color: 'var(--text-muted)' },
+
+    filterRow: { display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '14px' },
+    filterBtn: { border: '1px solid', borderRadius: 'var(--radius-sm)', padding: '3px 8px', fontSize: '10px', fontWeight: '700', cursor: 'pointer', transition: 'var(--transition)' },
+
+    noIssues: { textAlign: 'center', padding: '24px' },
+    noIssuesIcon: { fontSize: '28px', marginBottom: '8px' },
+    noIssuesText: { fontSize: '14px', fontWeight: '600', color: '#22c55e' },
+
+    findingsCount: { fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px' },
+    findingCard: { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '12px', marginBottom: '8px', cursor: 'pointer', transition: 'var(--transition)' },
+    findingTop: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' },
+    sevBadge: { fontSize: '10px', fontWeight: '700', padding: '2px 7px', borderRadius: '4px', border: '1px solid' },
+    catBadge: { fontSize: '11px', fontWeight: '500' },
+    lineRef: { fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-overlay)', padding: '1px 6px', borderRadius: '3px' },
+    findingTitle: { fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' },
+    findingBody: { marginTop: '10px' },
+    findingDesc: { fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '10px' },
+    suggestion: { borderLeft: '3px solid #22c55e', background: 'rgba(34,197,94,0.05)', padding: '8px 12px', borderRadius: '4px', marginBottom: '8px' },
+    suggestionLabel: { fontSize: '11px', fontWeight: '700', color: '#22c55e', marginBottom: '4px' },
+    suggestionText: { fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' },
+
+    center: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh', gap: '16px' },
+    spinner: { width: '32px', height: '32px', border: '3px solid var(--border-default)', borderTop: '3px solid var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+    loadingText: { color: 'var(--text-secondary)', fontSize: '14px' },
+    errorText: { color: 'var(--danger)', fontSize: '15px' },
 }

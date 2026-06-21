@@ -11,6 +11,7 @@ export default function ReadmeGenerator() {
     const [readme, setReadme] = useState(null)
     const [error, setError] = useState(null)
     const [copied, setCopied] = useState(false)
+    const [activeTab, setActiveTab] = useState('preview')
 
     useEffect(() => {
         getFileTree(owner, repo)
@@ -25,13 +26,8 @@ export default function ReadmeGenerator() {
         setReadme(null)
         try {
             const filePaths = tree.map(f => f.path)
-
-            // Pick 3 meaningful code files as samples
             const codeExts = ['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'go']
-            const sampleFiles = tree
-                .filter(f => codeExts.includes(f.path.split('.').pop()))
-                .slice(0, 3)
-
+            const sampleFiles = tree.filter(f => codeExts.includes(f.path.split('.').pop())).slice(0, 3)
             const codeSamples = await Promise.all(
                 sampleFiles.map(async f => {
                     try {
@@ -42,10 +38,10 @@ export default function ReadmeGenerator() {
                     }
                 })
             )
-
             const res = await generateReadme(repo, filePaths, codeSamples)
             setReadme(res.data.readme)
-        } catch (err) {
+            setActiveTab('raw')
+        } catch {
             setError('README generation failed. Make sure AI service is running.')
         } finally {
             setGenerating(false)
@@ -68,95 +64,231 @@ export default function ReadmeGenerator() {
         URL.revokeObjectURL(url)
     }
 
-    if (loading) return <div style={styles.center}><p style={styles.loading}>Loading repository...</p></div>
+    if (loading) return (
+        <div style={s.center}>
+            <div style={s.spinner} />
+            <p style={s.loadingText}>Loading repository...</p>
+        </div>
+    )
 
     return (
-        <div style={styles.container}>
-            <div style={styles.header}>
+        <div style={s.page}>
+            {/* Header */}
+            <div style={s.header}>
                 <div>
-                    <div style={styles.breadcrumb}>
-                        <span style={styles.crumbLink} onClick={() => navigate('/repos')}>Repositories</span>
-                        <span style={styles.crumbSep}>/</span>
-                        <span style={styles.crumbLink} onClick={() => navigate(`/repos/${owner}/${repo}`)}>{repo}</span>
-                        <span style={styles.crumbSep}>/</span>
-                        <span style={styles.crumbActive}>README Generator</span>
+                    <div style={s.breadcrumb}>
+                        <span style={s.crumbLink} onClick={() => navigate('/repos')}>Repositories</span>
+                        <span style={s.crumbSep}>/</span>
+                        <span style={s.crumbLink} onClick={() => navigate(`/repos/${owner}/${repo}`)}>{repo}</span>
+                        <span style={s.crumbSep}>/</span>
+                        <span style={s.crumbActive}>README Generator</span>
                     </div>
-                    <h2 style={styles.title}>📝 README Generator</h2>
-                    <p style={styles.subtitle}>AI will analyze your repository and generate a professional README.md</p>
+                    <h2 style={s.title}>📝 README Generator</h2>
+                    <p style={s.subtitle}>AI analyzes your repository and generates a professional README.md</p>
                 </div>
                 <button
-                    style={{ ...styles.generateBtn, opacity: generating ? 0.7 : 1 }}
+                    style={{ ...s.generateBtn, opacity: generating ? 0.6 : 1 }}
                     onClick={handleGenerate}
                     disabled={generating}
                 >
-                    {generating ? '⏳ Generating...' : '✨ Generate README'}
+                    {generating ? (
+                        <><span style={s.btnSpinner} /> Generating...</>
+                    ) : (
+                        '✨ Generate README'
+                    )}
                 </button>
             </div>
 
+            {/* Repo Info Bar */}
+            {!readme && !generating && (
+                <div style={s.infoBar}>
+                    <div style={s.infoItem}>
+                        <span style={s.infoIcon}>📁</span>
+                        <span style={s.infoLabel}>Repository</span>
+                        <span style={s.infoValue}>{owner}/{repo}</span>
+                    </div>
+                    <div style={s.infoDivider} />
+                    <div style={s.infoItem}>
+                        <span style={s.infoIcon}>📄</span>
+                        <span style={s.infoLabel}>Files Detected</span>
+                        <span style={s.infoValue}>{tree.length}</span>
+                    </div>
+                    <div style={s.infoDivider} />
+                    <div style={s.infoItem}>
+                        <span style={s.infoIcon}>🤖</span>
+                        <span style={s.infoLabel}>AI Model</span>
+                        <span style={s.infoValue}>qwen2.5:0.5b</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Generating State */}
             {generating && (
-                <div style={styles.generatingBox}>
-                    <p style={styles.generatingText}>⏳ AI is reading your repository and writing the README...</p>
+                <div style={s.generatingBox}>
+                    <div style={s.generatingInner}>
+                        <div style={s.generatingSpinner} />
+                        <div style={s.generatingTitle}>AI is writing your README...</div>
+                        <div style={s.generatingDesc}>Analyzing {tree.length} files in {repo}</div>
+                        <div style={s.generatingSteps}>
+                            {['Reading file structure', 'Analyzing code samples', 'Writing documentation', 'Formatting markdown'].map((step, i) => (
+                                <div key={i} style={s.step}>
+                                    <div style={s.stepDot} />
+                                    <span style={s.stepText}>{step}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 
+            {/* Error */}
             {error && (
-                <div style={styles.errorBox}>
-                    <p style={styles.errorText}>{error}</p>
+                <div style={s.errorBox}>
+                    <span style={s.errorIcon}>❌</span>
+                    <span style={s.errorText}>{error}</span>
                 </div>
             )}
 
-            {readme && (
-                <div style={styles.resultBox}>
-                    <div style={styles.resultHeader}>
-                        <h3 style={styles.resultTitle}>✅ README.md Generated</h3>
-                        <div style={styles.actions}>
-                            <button style={styles.copyBtn} onClick={handleCopy}>
+            {/* Empty State */}
+            {!readme && !generating && !error && (
+                <div style={s.emptyBox}>
+                    <div style={s.emptyIcon}>📝</div>
+                    <div style={s.emptyTitle}>Generate a Professional README</div>
+                    <div style={s.emptyDesc}>Click "Generate README" and AI will analyze your repository to create a complete, professional README.md with features, installation steps, usage examples, and more.</div>
+                    <div style={s.emptyFeatures}>
+                        {['Project Description', 'Features List', 'Tech Stack', 'Installation Steps', 'Usage Guide', 'API Docs', 'Contributing Guide', 'License'].map((f, i) => (
+                            <span key={i} style={s.emptyTag}>✓ {f}</span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Result */}
+            {readme && !generating && (
+                <div style={s.resultBox}>
+                    {/* Result Header */}
+                    <div style={s.resultHeader}>
+                        <div style={s.resultLeft}>
+                            <div style={s.successBadge}>✅ README Generated</div>
+                            <div style={s.resultMeta}>{readme.split('\n').length} lines · {(readme.length / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <div style={s.resultActions}>
+                            <button style={s.copyBtn} onClick={handleCopy}>
                                 {copied ? '✅ Copied!' : '📋 Copy'}
                             </button>
-                            <button style={styles.downloadBtn} onClick={handleDownload}>
+                            <button style={s.downloadBtn} onClick={handleDownload}>
                                 ⬇️ Download README.md
+                            </button>
+                            <button style={s.regenerateBtn} onClick={handleGenerate}>
+                                🔄 Regenerate
                             </button>
                         </div>
                     </div>
-                    <pre style={styles.readmeContent}>{readme}</pre>
-                </div>
-            )}
 
-            {!readme && !generating && (
-                <div style={styles.infoBox}>
-                    <p style={styles.infoTitle}>📁 Repository: {owner}/{repo}</p>
-                    <p style={styles.infoText}>{tree.length} files detected</p>
-                    <p style={styles.infoText}>Click "Generate README" to create a professional README.md using AI.</p>
+                    {/* Tabs */}
+                    <div style={s.tabs}>
+                        <button
+                            style={{ ...s.tab, ...(activeTab === 'raw' ? s.tabActive : {}) }}
+                            onClick={() => setActiveTab('raw')}
+                        >
+                            📄 Raw Markdown
+                        </button>
+                        <button
+                            style={{ ...s.tab, ...(activeTab === 'preview' ? s.tabActive : {}) }}
+                            onClick={() => setActiveTab('preview')}
+                        >
+                            👁️ Preview
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    {activeTab === 'raw' ? (
+                        <pre style={s.rawContent}>{readme}</pre>
+                    ) : (
+                        <div style={s.previewContent}>
+                            {readme.split('\n').map((line, i) => {
+                                if (line.startsWith('# ')) return <h1 key={i} style={s.mdH1}>{line.slice(2)}</h1>
+                                if (line.startsWith('## ')) return <h2 key={i} style={s.mdH2}>{line.slice(3)}</h2>
+                                if (line.startsWith('### ')) return <h3 key={i} style={s.mdH3}>{line.slice(4)}</h3>
+                                if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={s.mdLi}>• {line.slice(2)}</div>
+                                if (line.startsWith('```')) return <div key={i} style={s.mdCodeFence} />
+                                if (line === '') return <div key={i} style={{ height: '8px' }} />
+                                return <p key={i} style={s.mdP}>{line}</p>
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     )
 }
 
-const styles = {
-    container: { padding: '32px', maxWidth: '1100px', margin: '0 auto' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
-    breadcrumb: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' },
-    crumbLink: { color: '#58a6ff', cursor: 'pointer', fontSize: '13px' },
-    crumbSep: { color: '#6e7681', fontSize: '13px' },
-    crumbActive: { color: '#e6edf3', fontSize: '13px' },
-    title: { color: '#e6edf3', fontSize: '24px', fontWeight: '700', margin: '0 0 4px' },
-    subtitle: { color: '#8b949e', fontSize: '13px', margin: 0 },
-    generateBtn: { background: '#1f6feb', color: 'white', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
-    generatingBox: { background: '#161b22', border: '1px solid #1f6feb', borderRadius: '8px', padding: '20px', marginBottom: '24px', textAlign: 'center' },
-    generatingText: { color: '#58a6ff', margin: 0 },
-    errorBox: { background: '#161b22', border: '1px solid #f85149', borderRadius: '8px', padding: '16px', marginBottom: '24px' },
-    errorText: { color: '#f85149', margin: 0 },
-    resultBox: { background: '#161b22', border: '1px solid #3fb950', borderRadius: '10px', overflow: 'hidden' },
-    resultHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #30363d', flexWrap: 'wrap', gap: '12px' },
-    resultTitle: { color: '#3fb950', fontSize: '16px', fontWeight: '700', margin: 0 },
-    actions: { display: 'flex', gap: '8px' },
-    copyBtn: { background: '#21262d', color: '#e6edf3', border: '1px solid #30363d', borderRadius: '6px', padding: '6px 16px', fontSize: '13px', cursor: 'pointer' },
-    downloadBtn: { background: '#238636', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    readmeContent: { padding: '24px', color: '#e6edf3', fontSize: '13px', fontFamily: '"Fira Code", monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, maxHeight: '600px', overflowY: 'auto' },
-    infoBox: { background: '#161b22', border: '1px dashed #30363d', borderRadius: '10px', padding: '40px', textAlign: 'center' },
-    infoTitle: { color: '#e6edf3', fontSize: '18px', fontWeight: '600', margin: '0 0 8px' },
-    infoText: { color: '#8b949e', fontSize: '14px', margin: '4px 0' },
-    center: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' },
-    loading: { color: '#58a6ff', fontSize: '16px' }
+const s = {
+    page: { padding: '40px', maxWidth: '1100px', margin: '0 auto' },
+
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' },
+    breadcrumb: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' },
+    crumbLink: { color: 'var(--primary)', cursor: 'pointer', fontSize: '13px' },
+    crumbSep: { color: 'var(--text-muted)', fontSize: '13px' },
+    crumbActive: { color: 'var(--text-primary)', fontSize: '13px' },
+    title: { fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px' },
+    subtitle: { fontSize: '14px', color: 'var(--text-secondary)', margin: 0 },
+    generateBtn: { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 24px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 20px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' },
+    btnSpinner: { width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' },
+
+    infoBar: { display: 'flex', alignItems: 'center', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '16px 24px', marginBottom: '24px', gap: '24px' },
+    infoItem: { display: 'flex', alignItems: 'center', gap: '8px' },
+    infoIcon: { fontSize: '16px' },
+    infoLabel: { fontSize: '12px', color: 'var(--text-muted)' },
+    infoValue: { fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' },
+    infoDivider: { width: '1px', height: '20px', background: 'var(--border-subtle)' },
+
+    generatingBox: { background: 'var(--bg-surface)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-lg)', padding: '48px', marginBottom: '24px' },
+    generatingInner: { textAlign: 'center', maxWidth: '360px', margin: '0 auto' },
+    generatingSpinner: { width: '48px', height: '48px', border: '3px solid var(--border-default)', borderTop: '3px solid var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' },
+    generatingTitle: { fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' },
+    generatingDesc: { fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' },
+    generatingSteps: { display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' },
+    step: { display: 'flex', alignItems: 'center', gap: '10px' },
+    stepDot: { width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 },
+    stepText: { fontSize: '13px', color: 'var(--text-secondary)' },
+
+    errorBox: { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '16px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' },
+    errorIcon: { fontSize: '18px' },
+    errorText: { fontSize: '13px', color: 'var(--danger)' },
+
+    emptyBox: { background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '60px 40px', textAlign: 'center' },
+    emptyIcon: { fontSize: '52px', marginBottom: '16px' },
+    emptyTitle: { fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '10px' },
+    emptyDesc: { fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '500px', margin: '0 auto 24px', lineHeight: '1.7' },
+    emptyFeatures: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' },
+    emptyTag: { background: 'var(--primary-subtle)', color: 'var(--text-accent)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '500' },
+
+    resultBox: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' },
+    resultHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', flexWrap: 'wrap', gap: '12px' },
+    resultLeft: {},
+    successBadge: { fontSize: '14px', fontWeight: '700', color: '#22c55e', marginBottom: '2px' },
+    resultMeta: { fontSize: '12px', color: 'var(--text-muted)' },
+    resultActions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+    copyBtn: { background: 'var(--bg-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' },
+    downloadBtn: { background: '#22c55e', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '7px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    regenerateBtn: { background: 'var(--bg-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' },
+
+    tabs: { display: 'flex', gap: '0', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' },
+    tab: { padding: '10px 20px', fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)', background: 'transparent', border: 'none', borderBottom: '2px solid transparent', cursor: 'pointer', transition: 'var(--transition)' },
+    tabActive: { color: 'var(--primary)', borderBottomColor: 'var(--primary)' },
+
+    rawContent: { padding: '24px', color: 'var(--text-primary)', fontSize: '13px', fontFamily: '"JetBrains Mono", "Fira Code", monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, maxHeight: '600px', overflowY: 'auto', lineHeight: '1.7' },
+    previewContent: { padding: '32px', maxHeight: '600px', overflowY: 'auto' },
+
+    mdH1: { fontSize: '28px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' },
+    mdH2: { fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: '24px 0 12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' },
+    mdH3: { fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: '16px 0 8px' },
+    mdP: { fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '8px' },
+    mdLi: { fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '4px', paddingLeft: '16px' },
+    mdCodeFence: { height: '1px', background: 'var(--border-subtle)', margin: '8px 0' },
+
+    center: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh', gap: '16px' },
+    spinner: { width: '32px', height: '32px', border: '3px solid var(--border-default)', borderTop: '3px solid var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+    loadingText: { color: 'var(--text-secondary)', fontSize: '14px' },
 }
