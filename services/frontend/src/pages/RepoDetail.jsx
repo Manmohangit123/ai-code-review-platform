@@ -55,6 +55,12 @@ export default function RepoDetail() {
                 >
                     📝 Generate README
                 </button>
+                <button
+                    style={styles.prBtn}
+                    onClick={() => navigate(`/repos/${owner}/${repo}/pulls`)}
+                >
+                    🔀 PR Analysis
+                </button>
             </div>
 
             <div style={styles.fileList}>
@@ -88,6 +94,7 @@ const styles = {
     toolbar: { marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' },
     search: { background: '#0d1117', border: '1px solid #30363d', borderRadius: '6px', color: '#e6edf3', padding: '8px 14px', fontSize: '14px', width: '300px', outline: 'none' },
     readmeBtn: { background: '#238636', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    prBtn: { background: '#6e40c9', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     fileList: { background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', overflow: 'hidden' },
     fileRow: { display: 'flex', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #21262d', cursor: 'pointer', transition: 'background 0.15s' },
     fileIcon: { marginRight: '10px', fontSize: '14px' },

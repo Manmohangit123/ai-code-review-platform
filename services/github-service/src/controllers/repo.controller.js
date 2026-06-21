@@ -72,8 +72,8 @@ exports.getPullRequests = async (req, res) => {
     const { owner, repo } = req.params;
     try {
         const accessToken = await getAccessToken(req.user.userId);
-        const prs = await githubApi.getPullRequests(accessToken, owner, repo);
-        res.json({ prs, total: prs.length });
+        const pull_requests = await githubApi.getPullRequests(accessToken, owner, repo);
+        res.json({ pull_requests, total: pull_requests.length });
     } catch (err) {
         console.error('getPullRequests error:', err.message);
         res.status(500).json({ error: err.message });
