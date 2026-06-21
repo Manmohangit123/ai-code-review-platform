@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Backgrounds */
+  --bg-base: #05050a;
+  --bg-surface: #0d0d14;
+  --bg-elevated: #12121c;
+  --bg-overlay: #1a1a28;
+  --bg-hover: #1e1e2e;
+
+  /* Borders */
+  --border-subtle: #1e1e2e;
+  --border-default: #252538;
+  --border-strong: #32324a;
+
+  /* Primary - Indigo */
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-subtle: rgba(99, 102, 241, 0.12);
+  --primary-glow: rgba(99, 102, 241, 0.25);
+
+  /* Text */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #4a5568;
+  --text-accent: #818cf8;
+
+  /* Status Colors */
+  --success: #22c55e;
+  --success-subtle: rgba(34, 197, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-subtle: rgba(245, 158, 11, 0.12);
+  --danger: #ef4444;
+  --danger-subtle: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-subtle: rgba(59, 130, 246, 0.12);
+
+  /* Severity */
+  --critical: #dc2626;
+  --high: #ef4444;
+  --medium: #f59e0b;
+  --low: #3b82f6;
+  --info-sev: #6b7280;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Transitions */
+  --transition: all 0.15s ease;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+::selection { background: var(--primary-subtle); color: var(--text-primary); }

@@ -103,7 +103,7 @@ export default function FileViewer() {
             {/* Scanning indicator */}
             {scanning && (
                 <div style={styles.scanningBox}>
-                    <p style={styles.scanningText}>⏳ AI is analyzing your code... please wait 30-60 seconds.</p>
+                    <p style={styles.scanningText}>⏳ AI is analyzing your code...</p>
                 </div>
             )}
 

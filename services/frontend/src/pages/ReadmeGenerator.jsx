@@ -95,7 +95,7 @@ export default function ReadmeGenerator() {
 
             {generating && (
                 <div style={styles.generatingBox}>
-                    <p style={styles.generatingText}>⏳ AI is reading your repository and writing the README... this takes 60-90 seconds.</p>
+                    <p style={styles.generatingText}>⏳ AI is reading your repository and writing the README...</p>
                 </div>
             )}
 
