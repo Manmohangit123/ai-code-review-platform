@@ -8,7 +8,8 @@ export default function Layout() {
 
     const navItems = [
         { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Repositories', path: '/repos' }
+        { label: 'Repositories', path: '/repos' },
+        { label: '📊 Analytics', path: '/analytics' }
     ]
 
     return (

@@ -7,6 +7,7 @@ import RepoDetail from './pages/RepoDetail'
 import FileViewer from './pages/FileViewer'
 import ReadmeGenerator from './pages/ReadmeGenerator'
 import PRAnalysis from './pages/PRAnalysis'
+import Analytics from './pages/Analytics'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -32,6 +33,7 @@ function AppRoutes() {
                 <Route path="/repos/:owner/:repo/file" element={<FileViewer />} />
                 <Route path="/repos/:owner/:repo/readme" element={<ReadmeGenerator />} />
                 <Route path="/repos/:owner/:repo/pulls" element={<PRAnalysis />} />
+                <Route path="/analytics" element={<Analytics />} />
             </Route>
         </Routes>
     )

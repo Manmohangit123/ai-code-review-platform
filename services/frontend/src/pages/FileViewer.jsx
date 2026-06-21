@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getFileContent, analyzeCode, scanSecurity, scanPerformance } from '../services/api'
+import { saveReview } from '../services/analytics'
 
 const getLanguage = (path) => {
     const ext = path?.split('.').pop()
@@ -44,6 +45,9 @@ export default function FileViewer() {
             else if (type === 'security') res = await scanSecurity(filePath, file.content, lang)
             else if (type === 'performance') res = await scanPerformance(filePath, file.content, lang)
             setReports(prev => ({ ...prev, [type]: res.data }))
+            const score = res.data?.overall_score ?? res.data?.performance_score ?? null
+            const severity = res.data?.risk_level ?? null
+            saveReview(type, repo, filePath, score, severity)
         } catch {
             setScanError(`${type} scan failed. Make sure AI service is running.`)
         } finally {
