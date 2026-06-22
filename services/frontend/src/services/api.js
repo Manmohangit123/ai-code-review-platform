@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const AUTH_URL = 'http://localhost:3001';
-const GITHUB_URL = 'http://localhost:3002';
-const AI_URL = 'http://localhost:8000';
+const AUTH_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:3001';
+const GITHUB_URL = import.meta.env.VITE_GITHUB_URL || 'http://localhost:3002';
+const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
 
 const getToken = () => localStorage.getItem('accessToken');
 
