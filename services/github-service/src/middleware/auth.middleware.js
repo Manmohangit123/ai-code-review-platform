@@ -6,9 +6,14 @@ module.exports = (req, res, next) => {
         return res.status(401).json({ error: 'No token provided' });
     }
     try {
-        req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+        const token = authHeader.split(' ')[1];
+        const secret = process.env.JWT_SECRET;
+        console.log('JWT_SECRET length:', secret ? secret.length : 'NOT SET');
+        console.log('Token prefix:', token.substring(0, 20));
+        req.user = jwt.verify(token, secret);
         next();
-    } catch {
+    } catch (err) {
+        console.log('JWT verify error:', err.message);
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 };
