@@ -34,4 +34,7 @@ async def generate_readme(request: ReadmeRequest):
         return {"readme": readme}
 
     except Exception as e:
+        import traceback
+        print("README error:", str(e))
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"README generation failed: {str(e)}")

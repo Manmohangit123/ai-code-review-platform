@@ -32,13 +32,13 @@ export const getPullRequests = (owner, repo) =>
 
 // AI
 export const analyzeCode = (file_path, code, language) =>
-    axios.post(`${AI_URL}/ai/review`, { file_path, code, language }, { timeout: 120000 });
+    axios.post(`${AI_URL}/ai/review/`, { file_path, code, language }, { timeout: 120000 });
 
 export const scanSecurity = (file_path, code, language) =>
-    axios.post(`${AI_URL}/ai/security`, { file_path, code, language }, { timeout: 180000 });
+    axios.post(`${AI_URL}/ai/security/`, { file_path, code, language }, { timeout: 180000 });
 
 export const scanPerformance = (file_path, code, language) =>
-    axios.post(`${AI_URL}/ai/performance`, { file_path, code, language }, { timeout: 180000 });
+    axios.post(`${AI_URL}/ai/performance/`, { file_path, code, language }, { timeout: 180000 });
 
 export const generateReadme = (project_name, file_tree, code_samples) =>
     axios.post(`${AI_URL}/ai/docs/readme`, { project_name, file_tree, code_samples }, { timeout: 180000 });

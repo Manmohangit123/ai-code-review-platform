@@ -26,4 +26,7 @@ async def review_code(request: CodeReviewRequest):
         }
 
     except Exception as e:
+        import traceback
+        print("Review error:", str(e))
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
