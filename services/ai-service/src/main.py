@@ -7,9 +7,12 @@ from src.routers import review, security, performance, docs_gen
 
 app = FastAPI(title="AI Code Review Service", version="1.0.0")
 
+import os
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
