@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from src.services.openai_service import analyze_with_openai as analyze_with_ollama
+from src.services.gemini_service import analyze_with_gemini as analyze_with_ollama
 from src.services.prompt_builder import PERFORMANCE_SCAN_PROMPT
 
 router = APIRouter()

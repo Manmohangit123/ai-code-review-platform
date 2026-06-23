@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from src.models.schemas import CodeReviewRequest, CodeReviewResponse
-from src.services.openai_service import analyze_with_openai as analyze_with_ollama
+from src.services.gemini_service import analyze_with_gemini as analyze_with_ollama
 from src.services.prompt_builder import CODE_REVIEW_PROMPT
 
 router = APIRouter()

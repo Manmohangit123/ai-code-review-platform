@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from src.services.openai_service import generate_text_with_openai as generate_text_with_ollama
+from src.services.gemini_service import generate_text_with_gemini as generate_text_with_ollama
 from src.services.prompt_builder import README_GENERATOR_PROMPT
 
 router = APIRouter()
