@@ -1,6 +1,7 @@
 export default function Login() {
     const handleLogin = () => {
-        window.location.href = 'http://localhost:3001/auth/github'
+        const authUrl = import.meta.env.VITE_AUTH_URL || 'http://localhost:3001'
+        window.location.href = `${authUrl}/auth/github`
     }
 
     const features = [
