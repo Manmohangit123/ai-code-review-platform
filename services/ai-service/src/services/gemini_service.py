@@ -13,7 +13,7 @@ async def call_gemini(prompt: str) -> str:
             url,
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1500}
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192}
             }
         )
         response.raise_for_status()

@@ -21,8 +21,8 @@ async def generate_readme(request: ReadmeRequest):
         file_tree_str = "\n".join(request.file_tree[:100])
 
         samples_str = ""
-        for f in request.code_samples[:3]:
-            samples_str += f"\n--- {f.path} ---\n{f.content[:2000]}\n"
+        for f in request.code_samples[:5]:
+            samples_str += f"\n--- {f.path} ---\n{f.content[:3000]}\n"
 
         prompt = README_GENERATOR_PROMPT.format(
             project_name=request.project_name,
