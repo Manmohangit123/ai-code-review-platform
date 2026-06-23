@@ -9,7 +9,7 @@ router = APIRouter()
 async def review_code(request: CodeReviewRequest):
     try:
         # Limit code size to avoid token overload
-        code = request.code[:8000]
+        code = request.code[:4000]
 
         prompt = CODE_REVIEW_PROMPT.format(
             language=request.language,

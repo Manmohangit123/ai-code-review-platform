@@ -14,7 +14,7 @@ class PerformanceScanRequest(BaseModel):
 @router.post("/")
 async def scan_performance(request: PerformanceScanRequest):
     try:
-        code = request.code[:8000]
+        code = request.code[:4000]
         prompt = PERFORMANCE_SCAN_PROMPT.format(
             language=request.language,
             file_path=request.file_path,
