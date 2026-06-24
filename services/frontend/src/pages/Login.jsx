@@ -60,7 +60,7 @@ export default function Login() {
                     </div>
 
                     <div style={s.trustList}>
-                        {['✓ Read-only repository access', '✓ No code stored on our servers', '✓ AI runs locally via Ollama', '✓ Your data stays private'].map((t, i) => (
+                        {['✓ Read-only repository access', '✓ No code stored on our servers', '✓ AI runs via Gemini API globally', '✓ Your data stays private'].map((t, i) => (
                             <div key={i} style={s.trustItem}>{t}</div>
                         ))}
                     </div>
