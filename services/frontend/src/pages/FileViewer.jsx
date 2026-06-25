@@ -3,6 +3,10 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getFileContent, analyzeCode, scanSecurity, scanPerformance } from '../services/api'
 import { saveReview } from '../services/analytics'
 
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']
+
+const isImage = (path) => IMAGE_EXTS.includes(path?.split('.').pop()?.toLowerCase())
+
 const getLanguage = (path) => {
     const ext = path?.split('.').pop()
     const map = { js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', py: 'python', css: 'css', html: 'html', json: 'json', sql: 'sql', md: 'markdown' }
@@ -135,23 +139,37 @@ export default function FileViewer() {
             </div>
 
             <div style={s.layout}>
-                {/* Code Panel */}
+                {/* Code / Image Panel */}
                 <div style={s.codePanel}>
                     <div style={s.codePanelHeader}>
-                        <span style={s.fileName}>📄 {filePath?.split('/').pop()}</span>
+                        <span style={s.fileName}>{isImage(filePath) ? '🖼️' : '📄'} {filePath?.split('/').pop()}</span>
                     </div>
-                    <div style={s.codeContainer}>
-                        <table style={s.table}>
-                            <tbody>
-                                {lines.map((line, i) => (
-                                    <tr key={i} style={s.row}>
-                                        <td style={s.lineNum}>{i + 1}</td>
-                                        <td style={s.lineCode}><pre style={s.pre}>{line || ' '}</pre></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {isImage(filePath) ? (
+                        <div style={s.imageContainer}>
+                            <img
+                                src={`https://raw.githubusercontent.com/${owner}/${repo}/main/${filePath}`}
+                                alt={filePath?.split('/').pop()}
+                                style={s.imagePreview}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }}
+                            />
+                            <div style={{ display: 'none', color: 'var(--text-muted)', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
+                                Image could not be loaded. It may be on a different branch.
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={s.codeContainer}>
+                            <table style={s.table}>
+                                <tbody>
+                                    {lines.map((line, i) => (
+                                        <tr key={i} style={s.row}>
+                                            <td style={s.lineNum}>{i + 1}</td>
+                                            <td style={s.lineCode}><pre style={s.pre}>{line || ' '}</pre></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* Report Panel */}
@@ -349,6 +367,9 @@ const s = {
     suggestion: { borderLeft: '3px solid #22c55e', background: 'rgba(34,197,94,0.05)', padding: '8px 12px', borderRadius: '4px', marginBottom: '8px' },
     suggestionLabel: { fontSize: '11px', fontWeight: '700', color: '#22c55e', marginBottom: '4px' },
     suggestionText: { fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' },
+
+    imageContainer: { padding: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', background: 'repeating-conic-gradient(var(--bg-elevated) 0% 25%, var(--bg-surface) 0% 50%) 0 0 / 20px 20px' },
+    imagePreview: { maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' },
 
     center: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh', gap: '16px' },
     spinner: { width: '32px', height: '32px', border: '3px solid var(--border-default)', borderTop: '3px solid var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
