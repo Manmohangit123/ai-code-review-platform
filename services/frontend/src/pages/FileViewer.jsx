@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getFileContent, analyzeCode, scanSecurity, scanPerformance } from '../services/api'
 import { saveReview } from '../services/analytics'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']
 
@@ -82,6 +84,19 @@ export default function FileViewer() {
 
     const scoreColor = (score) => score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444'
 
+    const getHighlightedLines = () => {
+        if (!file?.content) return []
+        const lang = getLanguage(filePath)
+        try {
+            const highlighted = lang !== 'unknown'
+                ? hljs.highlight(file.content, { language: lang }).value
+                : hljs.highlightAuto(file.content).value
+            return highlighted.split('\n')
+        } catch {
+            return file.content.split('\n')
+        }
+    }
+
     if (loading) return (
         <div style={s.center}>
             <div style={s.spinner} />
@@ -91,6 +106,7 @@ export default function FileViewer() {
     if (error) return <div style={s.center}><p style={s.errorText}>Error: {error}</p></div>
 
     const lines = file?.content?.split('\n') || []
+    const highlightedLines = isImage(filePath) ? [] : getHighlightedLines()
     const currentReport = reports[activeTab]
     const score = getScore()
 
@@ -160,10 +176,12 @@ export default function FileViewer() {
                         <div style={s.codeContainer}>
                             <table style={s.table}>
                                 <tbody>
-                                    {lines.map((line, i) => (
+                                    {highlightedLines.map((line, i) => (
                                         <tr key={i} style={s.row}>
                                             <td style={s.lineNum}>{i + 1}</td>
-                                            <td style={s.lineCode}><pre style={s.pre}>{line || ' '}</pre></td>
+                                            <td style={s.lineCode}>
+                                                <pre style={s.pre} dangerouslySetInnerHTML={{ __html: line || ' ' }} />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
