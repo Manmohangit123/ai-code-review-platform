@@ -60,6 +60,33 @@
   --transition: all 0.15s ease;
 }
 
+/* Light Mode */
+[data-theme="light"] {
+  --bg-base: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f8f9fb;
+  --bg-overlay: #eef0f4;
+  --bg-hover: #e8eaf0;
+
+  --border-subtle: #e2e6ed;
+  --border-default: #d0d5dd;
+  --border-strong: #b8bec9;
+
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-subtle: rgba(99, 102, 241, 0.10);
+  --primary-glow: rgba(99, 102, 241, 0.20);
+
+  --text-primary: #0f1117;
+  --text-secondary: #4a5568;
+  --text-muted: #9aa5b4;
+  --text-accent: #6366f1;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.10);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,6 +12,14 @@ export default function Layout() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
+    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme)
+        localStorage.setItem('theme', theme)
+    }, [theme])
+
+    const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
 
     const isActive = (path) => location.pathname.startsWith(path)
 
@@ -48,6 +57,14 @@ export default function Layout() {
                 </nav>
 
                 <div style={{ flex: 1 }} />
+
+                {/* Theme Toggle */}
+                <div style={s.themeToggleWrap}>
+                    <button style={s.themeToggle} onClick={toggleTheme} title="Toggle theme">
+                        <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
+                        <span style={s.themeLabel}>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                    </button>
+                </div>
 
                 {/* User Profile */}
                 <div style={s.userSection}>
@@ -122,6 +139,16 @@ const s = {
         width: '3px', height: '16px', borderRadius: '2px',
         background: 'var(--primary)',
     },
+
+    themeToggleWrap: { padding: '0 8px 8px' },
+    themeToggle: {
+        display: 'flex', alignItems: 'center', gap: '8px',
+        width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-sm)',
+        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+        color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '500',
+        cursor: 'pointer', transition: 'var(--transition)',
+    },
+    themeLabel: { fontSize: '13px' },
 
     userSection: { padding: '0 0 8px' },
     userCard: {
